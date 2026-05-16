@@ -1,0 +1,26 @@
+[
+  {
+    "id": "task-design-aqtracker-backend",
+    "key": "design-aqtracker-backend",
+    "content": "Task completed: design-aqtracker-backend",
+    "namespace": "tasks",
+    "type": "task-outcome",
+    "metadata": {
+      "success": true,
+      "quality": 0.85
+    },
+    "createdAt": 1778963573999
+  },
+  {
+    "id": "task-aqtracker-auth-shell",
+    "key": "aqtracker-auth-shell",
+    "content": "Task completed: aqtracker-auth-shell",
+    "namespace": "tasks",
+    "type": "task-outcome",
+    "metadata": {
+      "success": true,
+      "quality": 0.85
+    },
+    "createdAt": 1778963764933
+  }
+]
