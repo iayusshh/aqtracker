@@ -2,7 +2,8 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
-import { Filter } from 'lucide-react'
+import { Filter, ChevronDown, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AuditLogFiltersProps {
   tableNames: string[]
@@ -16,6 +17,62 @@ interface AuditLogFiltersProps {
 }
 
 const CHANGE_TYPES = ['insert', 'update', 'delete']
+
+function PillSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  options: { label: string; value: string }[]
+}) {
+  const hasValue = Boolean(value)
+  return (
+    <div className="relative inline-flex items-center">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'appearance-none rounded-full border px-3 py-1.5 pr-8 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-500/20',
+          hasValue
+            ? 'border-slate-400 bg-slate-100 text-slate-800 font-medium'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+        )}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={13} className="pointer-events-none absolute right-2.5 text-slate-400" />
+    </div>
+  )
+}
+
+function DateInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-slate-400 font-medium">{label}</span>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500/20 hover:border-slate-300 transition-colors"
+      />
+    </div>
+  )
+}
 
 export function AuditLogFilters({ tableNames, current }: AuditLogFiltersProps) {
   const router = useRouter()
@@ -39,64 +96,47 @@ export function AuditLogFilters({ tableNames, current }: AuditLogFiltersProps) {
     current.table_name || current.change_type || current.date_from || current.date_to
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
-          <Filter size={14} />
-          Filters
-        </div>
-
-        <select
-          value={current.table_name ?? ''}
-          onChange={(e) => updateParam('table_name', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Tables</option>
-          {tableNames.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-
-        <select
-          value={current.change_type ?? ''}
-          onChange={(e) => updateParam('change_type', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Actions</option>
-          {CHANGE_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={current.date_from ?? ''}
-            onChange={(e) => updateParam('date_from', e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={current.date_to ?? ''}
-            onChange={(e) => updateParam('date_to', e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {hasFilters && (
-          <button
-            onClick={clearAll}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            Clear all
-          </button>
-        )}
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+        <Filter size={12} />
+        Filter
       </div>
+
+      <PillSelect
+        value={current.table_name ?? ''}
+        onChange={(v) => updateParam('table_name', v)}
+        placeholder="All Tables"
+        options={tableNames.map((t) => ({ label: t, value: t }))}
+      />
+
+      <PillSelect
+        value={current.change_type ?? ''}
+        onChange={(v) => updateParam('change_type', v)}
+        placeholder="All Actions"
+        options={CHANGE_TYPES.map((t) => ({ label: t, value: t }))}
+      />
+
+      <DateInput
+        label="From"
+        value={current.date_from ?? ''}
+        onChange={(v) => updateParam('date_from', v)}
+      />
+
+      <DateInput
+        label="To"
+        value={current.date_to ?? ''}
+        onChange={(v) => updateParam('date_to', v)}
+      />
+
+      {hasFilters && (
+        <button
+          onClick={clearAll}
+          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
+        >
+          <X size={11} />
+          Clear
+        </button>
+      )}
     </div>
   )
 }

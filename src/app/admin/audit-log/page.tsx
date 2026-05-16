@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth'
-import { Shield } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { Shield, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AuditLogFilters } from '@/components/admin/audit-log-filters'
-import { JsonDiffView } from '@/components/admin/json-diff-view'
+import { EnhancedJsonDiffView } from '@/components/admin/enhanced-json-diff-view'
+import { RelativeTime } from '@/components/admin/relative-time'
 
 const PAGE_SIZE = 20
 
@@ -61,12 +61,12 @@ async function fetchTableNames() {
 
 function changeTypeBadge(type: string) {
   const map: Record<string, string> = {
-    insert: 'bg-blue-100 text-blue-700',
-    update: 'bg-amber-100 text-amber-700',
-    delete: 'bg-red-100 text-red-600',
+    insert: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    update: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+    delete: 'bg-red-50 text-red-700 ring-1 ring-red-200',
   }
   return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${map[type] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${map[type] ?? 'bg-slate-100 text-slate-600'}`}>
       {type}
     </span>
   )
@@ -94,28 +94,46 @@ export default async function AuditLogPage({
     fetchTableNames(),
   ])
 
+  const rangeFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeTo = Math.min(page * PAGE_SIZE, total)
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/50">
+      {/* Sticky frosted glass filter bar */}
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200/60 shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <AuditLogFilters tableNames={tableNames} current={params} />
+        </div>
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 py-8">
+        {/* Page header */}
         <div className="mb-6 flex items-center gap-3">
-          <Shield className="text-blue-600" size={24} />
+          <div className="rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 p-2.5 shadow-sm">
+            <Shield className="text-white" size={20} />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-            <p className="text-sm text-gray-500">{total} total records</p>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
+              Audit Log
+            </h1>
+            <p className="text-sm text-slate-500">
+              {total > 0
+                ? `Showing ${rangeFrom}–${rangeTo} of ${total} records`
+                : 'No audit records'}
+            </p>
           </div>
         </div>
 
-        <AuditLogFilters tableNames={tableNames} current={params} />
-
-        <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
+        {/* Table */}
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm border border-slate-200/80">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100">
                 {['Timestamp', 'Table', 'Record ID', 'Changed By', 'Action', 'Changes'].map(
                   (h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500"
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-400"
                     >
                       {h}
                     </th>
@@ -123,33 +141,32 @@ export default async function AuditLogPage({
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
-                    No audit records found
+                  <td colSpan={6} className="px-4 py-16 text-center text-slate-400 text-sm">
+                    No audit records found — try adjusting your filters
                   </td>
                 </tr>
               ) : (
-                data.map((row: any) => (
-                  <tr key={row.id} className="hover:bg-gray-50 transition-colors align-top">
-                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {formatDate(row.changed_at)}
-                      <br />
-                      <span className="text-gray-400">
-                        {new Date(row.changed_at).toLocaleTimeString('en-IN')}
-                      </span>
+                data.map((row: any, i: number) => (
+                  <tr
+                    key={row.id}
+                    className={`hover:bg-slate-50 transition-colors align-top ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <RelativeTime timestamp={row.changed_at} />
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-700">{row.table_name}</td>
-                    <td className="px-4 py-3 text-xs font-mono text-gray-500 max-w-xs truncate">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-700">{row.table_name}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-slate-400 max-w-[120px] truncate" title={row.record_id}>
                       {row.record_id}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-slate-700">
                       {row.users?.full_name ?? row.changed_by?.slice(0, 8) + '…'}
                     </td>
                     <td className="px-4 py-3">{changeTypeBadge(row.change_type)}</td>
                     <td className="px-4 py-3">
-                      <JsonDiffView old_value={row.old_value} new_value={row.new_value} />
+                      <EnhancedJsonDiffView old_value={row.old_value} new_value={row.new_value} />
                     </td>
                   </tr>
                 ))
@@ -158,26 +175,47 @@ export default async function AuditLogPage({
           </table>
         </div>
 
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              Page {page} of {totalPages} ({total} records)
+          <div className="mt-5 flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              Showing <span className="font-medium text-slate-700">{rangeFrom}–{rangeTo}</span> of{' '}
+              <span className="font-medium text-slate-700">{total}</span> records
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1.5">
               {page > 1 && (
                 <a
                   href={buildPageUrl(params, page - 1)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
                 >
-                  Previous
+                  <ChevronLeft size={14} />
+                  Prev
                 </a>
               )}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const p = Math.max(1, Math.min(page - 2, totalPages - 4)) + i
+                if (p < 1 || p > totalPages) return null
+                return (
+                  <a
+                    key={p}
+                    href={buildPageUrl(params, p)}
+                    className={`inline-flex items-center justify-center rounded-full w-8 h-8 text-sm font-medium transition-all ${
+                      p === page
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {p}
+                  </a>
+                )
+              })}
               {page < totalPages && (
                 <a
                   href={buildPageUrl(params, page + 1)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
                 >
                   Next
+                  <ChevronRight size={14} />
                 </a>
               )}
             </div>

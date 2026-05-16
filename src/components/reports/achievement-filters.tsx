@@ -2,7 +2,8 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
-import { Filter } from 'lucide-react'
+import { Filter, ChevronDown, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Cycle { id: string; name: string }
 
@@ -20,6 +21,40 @@ interface AchievementFiltersProps {
 const QUARTERS = ['q1', 'q2', 'q3', 'q4']
 const STATUSES = ['not_started', 'on_track', 'completed']
 
+function PillSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  options: { label: string; value: string }[]
+}) {
+  const hasValue = Boolean(value)
+  return (
+    <div className="relative inline-flex items-center">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'appearance-none rounded-full border px-3 py-1.5 pr-8 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30',
+          hasValue
+            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 font-medium'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+        )}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <ChevronDown size={13} className="pointer-events-none absolute right-2.5 text-slate-400" />
+    </div>
+  )
+}
+
 export function AchievementFilters({ departments, cycles, current }: AchievementFiltersProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -36,68 +71,52 @@ export function AchievementFilters({ departments, cycles, current }: Achievement
   )
 
   const clearAll = () => router.push(pathname)
+  const hasFilters = current.department || current.cycle_id || current.quarter || current.status
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
-          <Filter size={14} />
-          Filters
-        </div>
-
-        <select
-          value={current.department ?? ''}
-          onChange={(e) => updateParam('department', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-
-        <select
-          value={current.cycle_id ?? ''}
-          onChange={(e) => updateParam('cycle_id', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Cycles</option>
-          {cycles.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-
-        <select
-          value={current.quarter ?? ''}
-          onChange={(e) => updateParam('quarter', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Quarters</option>
-          {QUARTERS.map((q) => (
-            <option key={q} value={q}>{q.toUpperCase()}</option>
-          ))}
-        </select>
-
-        <select
-          value={current.status ?? ''}
-          onChange={(e) => updateParam('status', e.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s.replace('_', ' ')}</option>
-          ))}
-        </select>
-
-        {(current.department || current.cycle_id || current.quarter || current.status) && (
-          <button
-            onClick={clearAll}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
-          >
-            Clear all
-          </button>
-        )}
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+        <Filter size={12} />
+        Filter
       </div>
+
+      <PillSelect
+        value={current.department ?? ''}
+        onChange={(v) => updateParam('department', v)}
+        placeholder="All Departments"
+        options={departments.map((d) => ({ label: d, value: d }))}
+      />
+
+      <PillSelect
+        value={current.cycle_id ?? ''}
+        onChange={(v) => updateParam('cycle_id', v)}
+        placeholder="All Cycles"
+        options={cycles.map((c) => ({ label: c.name, value: c.id }))}
+      />
+
+      <PillSelect
+        value={current.quarter ?? ''}
+        onChange={(v) => updateParam('quarter', v)}
+        placeholder="All Quarters"
+        options={QUARTERS.map((q) => ({ label: q.toUpperCase(), value: q }))}
+      />
+
+      <PillSelect
+        value={current.status ?? ''}
+        onChange={(v) => updateParam('status', v)}
+        placeholder="All Statuses"
+        options={STATUSES.map((s) => ({ label: s.replace('_', ' '), value: s }))}
+      />
+
+      {hasFilters && (
+        <button
+          onClick={clearAll}
+          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50 transition-colors"
+        >
+          <X size={11} />
+          Clear
+        </button>
+      )}
     </div>
   )
 }

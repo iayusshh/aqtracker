@@ -1,13 +1,25 @@
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Target, Plus, Share2, Lock, Edit2 } from 'lucide-react'
+import {
+  Target,
+  Plus,
+  Share2,
+  Lock,
+  Edit2,
+  AlertTriangle,
+  ChevronRight,
+  Gauge,
+} from 'lucide-react'
 import { StatusBadge } from '@/components/goals/StatusBadge'
 import { UomBadge } from '@/components/goals/UomBadge'
 import { WeightageBar } from '@/components/goals/WeightageBar'
 import { getTargetDisplay, isEditable } from '@/lib/goals'
 import { GoalActions } from './GoalActions'
+import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { NumberTicker } from '@/components/ui/number-ticker'
 import type { GoalStatus, UomType } from '@/types'
+import { cn } from '@/lib/utils'
 
 /** Shape returned by Supabase JS client (snake_case columns) */
 interface GoalRow {
@@ -25,6 +37,14 @@ interface GoalRow {
   shared_from_goal_id: string | null
   created_at: string
   updated_at: string
+}
+
+const STATUS_ACCENT: Record<GoalStatus, string> = {
+  draft: 'bg-slate-300',
+  submitted: 'bg-blue-400',
+  approved: 'bg-emerald-400',
+  returned: 'bg-red-400',
+  locked: 'bg-violet-400',
 }
 
 export default async function GoalsPage() {
@@ -59,93 +79,178 @@ export default async function GoalsPage() {
   const canAddGoal = isGoalSettingPhase && goalCount < 8
   const hasSubmittableGoals = goals.some((g) => g.status === 'draft' || g.status === 'returned')
   const canSubmitAll = totalWeightage === 100 && hasSubmittableGoals
+  const goalsRemaining = 8 - goalCount
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-slate-50/60">
+      <div className="max-w-5xl mx-auto px-4 py-8 pt-10">
+
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-sm text-slate-400 mb-4">
+          <Link href="/dashboard" className="hover:text-slate-600 transition-colors">Dashboard</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="text-slate-500">My Goals</span>
+        </nav>
+
+        {/* Page Header */}
+        <div className="flex items-start justify-between mb-7 gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Target className="w-6 h-6 text-blue-600" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent leading-tight">
               My Goals
             </h1>
             {cycle ? (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1.5 text-sm text-slate-400">
                 {cycle.name} &bull; {cycle.year} &bull; Goal Setting Phase
               </p>
             ) : (
-              <p className="mt-1 text-sm text-amber-600">
+              <p className="mt-1.5 text-sm text-amber-600 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" />
                 No active goal-setting cycle. Check back later.
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* CTA buttons */}
+          <div className="flex items-center gap-3 flex-wrap">
             {hasSubmittableGoals && (
-              <GoalActions
-                type="submit-all"
-                cycleId={cycleId ?? undefined}
-                goals={goals.map((g) => ({ id: g.id, status: g.status, weightage: g.weightage }))}
-                disabled={!canSubmitAll}
-                disabledReason={
-                  totalWeightage !== 100
-                    ? `Total weightage is ${totalWeightage}% — must be 100% to submit`
+              <div className="relative group">
+                <GoalActions
+                  type="submit-all"
+                  cycleId={cycleId ?? undefined}
+                  goals={goals.map((g) => ({ id: g.id, status: g.status, weightage: g.weightage }))}
+                  disabled={!canSubmitAll}
+                  disabledReason={
+                    totalWeightage !== 100
+                      ? `Total weightage is ${totalWeightage}% — must be 100% to submit`
+                      : undefined
+                  }
+                />
+              </div>
+            )}
+
+            {canAddGoal ? (
+              <Link href={`/goals/new?cycle_id=${cycleId}`}>
+                <ShimmerButton
+                  background="rgba(79,70,229,1)"
+                  borderRadius="8px"
+                  className="gap-2 text-sm"
+                  title={`${goalsRemaining} goal slot${goalsRemaining !== 1 ? 's' : ''} remaining`}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Goal
+                </ShimmerButton>
+              </Link>
+            ) : (
+              <button
+                disabled
+                title={
+                  goalCount >= 8
+                    ? 'Maximum 8 goals reached'
+                    : !isGoalSettingPhase
+                    ? 'Goal setting window is not open'
                     : undefined
                 }
-              />
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-400 cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4" />
+                Add Goal
+              </button>
             )}
-            <Link
-              href={canAddGoal ? `/goals/new?cycle_id=${cycleId}` : '#'}
-              aria-disabled={!canAddGoal}
-              className={
-                canAddGoal
-                  ? 'inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors'
-                  : 'inline-flex items-center gap-2 rounded-md bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed'
-              }
-              title={
-                goalCount >= 8
-                  ? 'Maximum 8 goals reached'
-                  : !isGoalSettingPhase
-                  ? 'Goal setting window is not open'
-                  : undefined
-              }
-            >
-              <Plus className="w-4 h-4" />
-              Add Goal
-            </Link>
           </div>
         </div>
 
-        {/* Summary Bar */}
+        {/* Summary Banner */}
         {cycleId && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-700">
-                {goalCount}/8 goals &bull; {totalWeightage}% allocated
-              </span>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                totalWeightage === 100
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                {totalWeightage === 100 ? 'Ready to submit' : 'Incomplete'}
-              </span>
+          <div
+            className={cn(
+              'rounded-2xl border p-5 mb-7 transition-all duration-300',
+              totalWeightage === 100
+                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'
+                : 'bg-gradient-to-r from-indigo-50 to-violet-50 border-indigo-100'
+            )}
+          >
+            <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+              {/* Goal count ticker */}
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center',
+                  totalWeightage === 100 ? 'bg-emerald-100' : 'bg-indigo-100'
+                )}>
+                  <Gauge className={cn('w-5 h-5', totalWeightage === 100 ? 'text-emerald-600' : 'text-indigo-600')} />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-0.5">Goals Added</p>
+                  <div className="text-2xl font-bold text-slate-900 flex items-baseline gap-1">
+                    <NumberTicker value={goalCount} className="text-2xl font-bold text-slate-900" />
+                    <span className="text-sm font-medium text-slate-400">/ 8</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weightage donut + status pill */}
+              <div className="flex items-center gap-4">
+                {/* Simple conic-gradient donut */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-700"
+                    style={{
+                      background: `conic-gradient(${
+                        totalWeightage === 100
+                          ? '#10b981'
+                          : totalWeightage > 100
+                          ? '#ef4444'
+                          : '#6366f1'
+                      } ${totalWeightage * 3.6}deg, #e2e8f0 0deg)`,
+                    }}
+                  >
+                    <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                      {totalWeightage}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Weightage</p>
+                    <p className="text-sm font-semibold text-slate-700">{totalWeightage}% / 100%</p>
+                  </div>
+                </div>
+
+                <span
+                  className={cn(
+                    'text-xs font-semibold px-3 py-1 rounded-full',
+                    totalWeightage === 100
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-slate-100 text-slate-600'
+                  )}
+                >
+                  {totalWeightage === 100 ? 'Ready to submit' : 'Incomplete'}
+                </span>
+              </div>
             </div>
+
             <WeightageBar used={totalWeightage} />
           </div>
         )}
 
         {/* Goal Cards */}
         {goals.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-lg font-medium">No goals yet</p>
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="relative mb-6">
+              <div className="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.15)]">
+                <Target className="w-9 h-9 text-indigo-400" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-100 rounded-full border-2 border-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800 mb-2">No goals yet</h2>
+            <p className="text-sm text-slate-400 max-w-xs mb-6">
+              Set your performance goals for this cycle. You can add up to 8 goals with a total weightage of 100%.
+            </p>
             {canAddGoal && (
-              <p className="text-sm mt-1">
-                <Link href={`/goals/new?cycle_id=${cycleId}`} className="text-blue-600 hover:underline">
+              <Link href={`/goals/new?cycle_id=${cycleId}`}>
+                <ShimmerButton background="rgba(79,70,229,1)" borderRadius="8px" className="gap-2 text-sm">
+                  <Plus className="w-4 h-4" />
                   Add your first goal
-                </Link>
-              </p>
+                </ShimmerButton>
+              </Link>
             )}
           </div>
         ) : (
@@ -160,68 +265,134 @@ export default async function GoalsPage() {
   )
 }
 
-function GoalCard({ goal, canEdit }: { goal: GoalRow; canEdit: boolean }) {
+async function getReturnReason(goalId: string): Promise<string | null> {
+  // Return reason lookup from audit_log — best-effort, silently ignored if it fails
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('audit_log')
+      .select('new_data')
+      .eq('goal_id', goalId)
+      .eq('change_type', 'status_change')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const newData = data?.new_data as Record<string, unknown> | null
+    if (newData && typeof newData['return_reason'] === 'string') {
+      return newData['return_reason']
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+async function GoalCard({ goal, canEdit }: { goal: GoalRow; canEdit: boolean }) {
   const editable = isEditable(goal.status) && canEdit
+  const returnReason = goal.status === 'returned' ? await getReturnReason(goal.id) : null
 
   return (
-    <li className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {/* Tags row */}
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                {goal.thrust_area}
-              </span>
-              <UomBadge uomType={goal.uom_type} />
-              <StatusBadge status={goal.status} />
-              {goal.is_shared && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-xs text-teal-700">
-                  <Share2 className="w-3 h-3" />
-                  Shared
-                </span>
-              )}
-              {goal.status === 'locked' && (
-                <span className="inline-flex items-center gap-1 text-xs text-purple-600">
-                  <Lock className="w-3 h-3" />
-                  Locked
-                </span>
-              )}
-            </div>
-
-            {/* Title */}
-            <h3 className="text-base font-semibold text-gray-900 truncate">{goal.title}</h3>
-
-            {goal.description && (
-              <p className="mt-1 text-sm text-gray-500 line-clamp-2">{goal.description}</p>
+    <li className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden">
+      {/* Returned banner */}
+      {goal.status === 'returned' && (
+        <div className="bg-gradient-to-r from-red-50 to-amber-50 border-b border-red-100 px-5 py-2.5 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <span className="text-xs font-semibold text-red-700 uppercase tracking-wider">Rework Required</span>
+            {returnReason && (
+              <p className="text-xs text-amber-700 mt-0.5">{returnReason}</p>
             )}
-
-            {/* Meta */}
-            <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
-              <span>Target: <strong>{getTargetDisplay(goal.uom_type, goal.target)}</strong></span>
-              <span>Weightage: <strong>{goal.weightage}%</strong></span>
-            </div>
           </div>
+        </div>
+      )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {editable && (
-              <>
-                <Link
-                  href={`/goals/${goal.id}/edit`}
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  Edit
-                </Link>
-                {goal.status === 'draft' && (
-                  <GoalActions type="delete" goalId={goal.id} />
+      <div className="flex">
+        {/* Left accent bar */}
+        <div className={cn('w-1 flex-shrink-0 rounded-l-2xl', STATUS_ACCENT[goal.status])} />
+
+        <div className="flex-1 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              {/* Top row: tags */}
+              <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                {/* Thrust area pill */}
+                <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                  {goal.thrust_area}
+                </span>
+                <UomBadge uomType={goal.uom_type} />
+                <StatusBadge status={goal.status} />
+                {goal.is_shared && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-100 px-2 py-0.5 text-xs text-teal-700 font-medium">
+                    <Share2 className="w-3 h-3" />
+                    Shared
+                  </span>
                 )}
-                {(goal.status === 'draft' || goal.status === 'returned') && (
-                  <GoalActions type="submit" goalId={goal.id} cycleId={goal.cycle_id} />
+                {goal.status === 'locked' && (
+                  <span className="inline-flex items-center gap-1 text-xs text-violet-600 font-medium">
+                    <Lock className="w-3 h-3" />
+                    Locked
+                  </span>
                 )}
-              </>
-            )}
+              </div>
+
+              {/* Title */}
+              <h3 className="text-lg font-semibold text-slate-900 leading-snug truncate">
+                {goal.title}
+              </h3>
+
+              {/* Description */}
+              {goal.description && (
+                <p className="mt-1 text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                  {goal.description}
+                </p>
+              )}
+
+              {/* Bottom meta row */}
+              <div className="mt-3 flex items-center gap-5 flex-wrap">
+                {/* Target */}
+                <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                  <Target className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Target:</span>
+                  <strong className="text-slate-800">{getTargetDisplay(goal.uom_type, goal.target)}</strong>
+                </div>
+
+                {/* Weightage mini bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">Weightage:</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full"
+                        style={{ width: `${goal.weightage}%` }}
+                      />
+                    </div>
+                    <strong className="text-sm text-slate-800">{goal.weightage}%</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {editable && (
+                <>
+                  <Link
+                    href={`/goals/${goal.id}/edit`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit
+                  </Link>
+                  {goal.status === 'draft' && (
+                    <GoalActions type="delete" goalId={goal.id} />
+                  )}
+                  {(goal.status === 'draft' || goal.status === 'returned') && (
+                    <GoalActions type="submit" goalId={goal.id} cycleId={goal.cycle_id} />
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
