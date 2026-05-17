@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
+  await supabase.from('audit_log').insert({
     table_name: 'goal_cycles',
     record_id: data.id,
     changed_by: user.id,
@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
+  await supabase.from('audit_log').insert({
     table_name: 'goal_cycles',
     record_id: id,
     changed_by: user.id,
@@ -121,7 +121,7 @@ export async function DELETE(req: NextRequest) {
   const { error } = await supabase.from('goal_cycles').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
+  await supabase.from('audit_log').insert({
     table_name: 'goal_cycles',
     record_id: id,
     changed_by: user.id,

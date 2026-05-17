@@ -22,7 +22,7 @@ async function fetchAchievements(filters: SearchParams) {
   const to = from + PAGE_SIZE - 1
 
   let query = supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`
       id,
       quarter,

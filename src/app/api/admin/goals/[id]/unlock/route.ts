@@ -31,7 +31,7 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
+  await supabase.from('audit_log').insert({
     table_name: 'goals',
     record_id: id,
     changed_by: user.id,

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const quarter = searchParams.get('quarter')
 
   let query = supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`
       *,
       goals!inner (
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   const { data: goal, error: goalError } = await supabase
     .from('goals')
-    .select('id, employee_id, uom_type, target, weightage, status')
+    .select('id, employee_id, uom_type, target, weightage, status, is_shared, shared_from_goal_id')
     .eq('id', goal_id)
     .single()
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   )
 
   const { data, error } = await supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .upsert(
       {
         goal_id,
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
-    table_name: 'goal_achievements',
+  await supabase.from('audit_log').insert({
+    table_name: 'quarterly_achievements',
     record_id: data.id,
     changed_by: user.id,
     change_type: 'update',
@@ -118,6 +118,30 @@ export async function POST(req: NextRequest) {
     old_value: null,
     changed_at: new Date().toISOString(),
   })
+
+  // Sync achievement to all linked shared goals (BRD §10)
+  // Only when this goal is the shared source (is_shared=true, shared_from_goal_id=null)
+  if (goal.is_shared && !goal.shared_from_goal_id) {
+    const { data: linkedGoals } = await supabase
+      .from('goals')
+      .select('id')
+      .eq('shared_from_goal_id', goal.id)
+      .in('status', ['approved', 'locked'])
+
+    if (linkedGoals?.length) {
+      await supabase.from('quarterly_achievements').upsert(
+        linkedGoals.map((lg) => ({
+          goal_id: lg.id,
+          quarter,
+          actual_achievement: actual_achievement ?? '',
+          status,
+          computed_score,
+          submitted_at: new Date().toISOString(),
+        })),
+        { onConflict: 'goal_id,quarter' }
+      )
+    }
+  }
 
   return NextResponse.json(data, { status: 201 })
 }

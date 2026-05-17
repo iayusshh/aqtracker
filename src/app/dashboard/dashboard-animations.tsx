@@ -95,7 +95,7 @@ const TABLE_LABEL: Record<string, string> = {
   manager_checkins: 'a check-in',
   users: 'a user record',
   goal_cycles: 'a cycle',
-  audit_logs: 'an audit entry',
+  audit_log: 'an audit entry',
 }
 
 function formatDate(date: string) {

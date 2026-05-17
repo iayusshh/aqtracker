@@ -69,7 +69,7 @@ export default function CheckinPage() {
           .eq('employee_id', user.id)
           .in('status', ['approved', 'locked']),
         supabase
-          .from('goal_achievements')
+          .from('quarterly_achievements')
           .select('goal_id, quarter, actual_achievement, status, computed_score')
           .eq('quarter', currentQuarter),
       ])

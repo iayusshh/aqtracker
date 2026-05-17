@@ -22,7 +22,7 @@ interface Goal {
   uom_type: string
   target: string
   weightage: number
-  goal_achievements: Achievement[]
+  quarterly_achievements: Achievement[]
 }
 
 interface Employee {
@@ -46,7 +46,7 @@ function weightedScore(goals: Goal[], quarter: Quarter): number {
   let totalWeight = 0
   let weightedSum = 0
   for (const g of goals) {
-    const ach = g.goal_achievements.find((a) => a.quarter === quarter)
+    const ach = g.quarterly_achievements.find((a) => a.quarter === quarter)
     if (ach) {
       weightedSum += (ach.computed_score ?? 0) * g.weightage
       totalWeight += g.weightage
@@ -96,7 +96,7 @@ export default function ManagerCheckinsPage() {
         .from('goals')
         .select(`
           id, title, uom_type, target, weightage, employee_id,
-          goal_achievements (quarter, actual_achievement, status, computed_score)
+          quarterly_achievements (quarter, actual_achievement, status, computed_score)
         `)
         .in('employee_id', reportIds)
         .in('status', ['approved', 'locked'])
@@ -200,7 +200,7 @@ export default function ManagerCheckinsPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {emp.goals.map((goal) => {
-                            const ach = goal.goal_achievements.find(
+                            const ach = goal.quarterly_achievements.find(
                               (a) => a.quarter === activeQuarter
                             )
                             return (

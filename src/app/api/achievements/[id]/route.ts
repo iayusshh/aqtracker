@@ -26,7 +26,7 @@ export async function GET(
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`*, goals!inner(employee_id, uom_type, target, weightage)`)
     .eq('id', id)
     .single()
@@ -47,7 +47,7 @@ export async function PATCH(
   const supabase = await createClient()
 
   const { data: existing, error: fetchErr } = await supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`*, goals!inner(employee_id, uom_type, target)`)
     .eq('id', id)
     .single()
@@ -72,7 +72,7 @@ export async function PATCH(
   const oldValue = { ...existing }
 
   const { data, error } = await supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .update({ actual_achievement, status, computed_score, submitted_at: new Date().toISOString() })
     .eq('id', id)
     .select()
@@ -80,8 +80,8 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('audit_logs').insert({
-    table_name: 'goal_achievements',
+  await supabase.from('audit_log').insert({
+    table_name: 'quarterly_achievements',
     record_id: id,
     changed_by: user.id,
     change_type: 'update',
@@ -102,7 +102,7 @@ export async function DELETE(
   const supabase = await createClient()
 
   const { data: existing, error: fetchErr } = await supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`*, goals!inner(employee_id)`)
     .eq('id', id)
     .single()
@@ -114,7 +114,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error } = await supabase.from('goal_achievements').delete().eq('id', id)
+  const { error } = await supabase.from('quarterly_achievements').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }

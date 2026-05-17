@@ -22,7 +22,7 @@ async function fetchAuditLogs(filters: SearchParams) {
   const to = from + PAGE_SIZE - 1
 
   let query = supabase
-    .from('audit_logs')
+    .from('audit_log')
     .select(
       `
       id,
@@ -53,7 +53,7 @@ async function fetchAuditLogs(filters: SearchParams) {
 async function fetchTableNames() {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('audit_logs')
+    .from('audit_log')
     .select('table_name')
   const names = [...new Set((data ?? []).map((r: any) => r.table_name).filter(Boolean))] as string[]
   return names

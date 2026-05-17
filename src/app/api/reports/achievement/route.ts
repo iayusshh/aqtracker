@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status')
 
   let query = supabase
-    .from('goal_achievements')
+    .from('quarterly_achievements')
     .select(`
       id,
       quarter,

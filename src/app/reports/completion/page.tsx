@@ -121,7 +121,7 @@ export default function CompletionDashboard() {
         supabase.from('users').select('id, full_name, department').eq('role', 'employee'),
         supabase.from('goals').select('id, employee_id, status'),
         supabase
-          .from('goal_achievements')
+          .from('quarterly_achievements')
           .select('id, goal_id, quarter, status')
           .eq('quarter', currentQuarter),
       ])
