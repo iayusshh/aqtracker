@@ -34,7 +34,6 @@ function getNavItems(role: UserRole): NavItem[] {
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Goals', href: '/goals', icon: Target },
       { label: 'Check-ins', href: '/goals/checkin', icon: MessageSquare },
-      { label: 'Achievement Report', href: '/reports/achievement', icon: TrendingUp },
     ]
   }
   if (role === 'manager') {
