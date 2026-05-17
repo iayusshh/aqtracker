@@ -1,3 +1,5 @@
+export const revalidate = 60
+
 import { requireUser } from '@/lib/auth'
 import type { AppUser, UserRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
@@ -308,12 +310,12 @@ function getQuickActions(role: UserRole): QuickAction[] {
   ]
 }
 
-function getGreeting(fullName: string): { text: string; emoji: string } {
+function getGreeting(fullName: string): string {
   const hour = new Date().getHours()
   const name = fullName.split(' ')[0]
-  if (hour < 12) return { text: `Good morning, ${name}`, emoji: '🌅' }
-  if (hour < 18) return { text: `Good afternoon, ${name}`, emoji: '☀️' }
-  return { text: `Good evening, ${name}`, emoji: '🌙' }
+  if (hour < 12) return `Good morning, ${name}`
+  if (hour < 18) return `Good afternoon, ${name}`
+  return `Good evening, ${name}`
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +342,7 @@ export default async function DashboardPage() {
   ])
   const quickActions = getQuickActions(user.role)
   const greeting = getGreeting(user.full_name)
+
 
   // Compute employee weightage for progress bar
   let weightageUsed = 0
@@ -385,7 +388,7 @@ export default async function DashboardPage() {
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          {greeting.emoji} {greeting.text}
+          {greeting}
         </h1>
         <p className="text-sm text-slate-500 mt-1 capitalize">
           {user.role} &middot; {user.department}

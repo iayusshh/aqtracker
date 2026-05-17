@@ -1,3 +1,5 @@
+export const revalidate = 30
+
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -71,6 +73,27 @@ export default async function GoalsPage() {
       .eq('cycle_id', cycleId)
       .order('created_at', { ascending: true })
     goals = (data ?? []) as GoalRow[]
+  }
+
+  // Batch-fetch return comments for all returned goals in a single query
+  const returnReasons = new Map<string, string>()
+  const returnedIds = goals.filter((g) => g.status === 'returned').map((g) => g.id)
+  if (returnedIds.length > 0) {
+    const { data: auditRows } = await supabase
+      .from('audit_log')
+      .select('record_id, new_value')
+      .in('record_id', returnedIds)
+      .eq('table_name', 'goals')
+      .eq('change_type', 'update')
+      .order('changed_at', { ascending: false })
+    for (const row of auditRows ?? []) {
+      if (!returnReasons.has(row.record_id)) {
+        const nd = row.new_value as Record<string, unknown> | null
+        if (nd && typeof nd['return_comment'] === 'string') {
+          returnReasons.set(row.record_id, nd['return_comment'])
+        }
+      }
+    }
   }
 
   const totalWeightage = goals.reduce((s, g) => s + g.weightage, 0)
@@ -256,7 +279,12 @@ export default async function GoalsPage() {
         ) : (
           <ul className="space-y-4">
             {goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} canEdit={isGoalSettingPhase} />
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                canEdit={isGoalSettingPhase}
+                returnReason={returnReasons.get(goal.id) ?? null}
+              />
             ))}
           </ul>
         )}
@@ -265,32 +293,8 @@ export default async function GoalsPage() {
   )
 }
 
-async function getReturnReason(goalId: string): Promise<string | null> {
-  // Return reason lookup from audit_log — best-effort, silently ignored if it fails
-  try {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from('audit_log')
-      .select('new_data')
-      .eq('goal_id', goalId)
-      .eq('change_type', 'status_change')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const newData = data?.new_data as Record<string, unknown> | null
-    if (newData && typeof newData['return_reason'] === 'string') {
-      return newData['return_reason']
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-async function GoalCard({ goal, canEdit }: { goal: GoalRow; canEdit: boolean }) {
+function GoalCard({ goal, canEdit, returnReason }: { goal: GoalRow; canEdit: boolean; returnReason: string | null }) {
   const editable = isEditable(goal.status) && canEdit
-  const returnReason = goal.status === 'returned' ? await getReturnReason(goal.id) : null
 
   return (
     <li className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden">

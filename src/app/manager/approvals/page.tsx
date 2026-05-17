@@ -110,7 +110,6 @@ export default async function ApprovalsPage() {
               <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
               </div>
-              <div className="absolute -top-1 -right-1 text-2xl">🎉</div>
             </div>
             <h2 className="text-xl font-semibold text-slate-800 mb-2">All caught up!</h2>
             <p className="text-slate-500 max-w-xs">
