@@ -1,8 +1,7 @@
-export const revalidate = 60
-
-import { requireUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import type { AppUser, UserRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import {
   Target,
@@ -67,8 +66,7 @@ interface SerializableStatCard {
 // Data fetching
 // ---------------------------------------------------------------------------
 
-async function fetchEmployeeStats(userId: string) {
-  const supabase = await createClient()
+async function fetchEmployeeStats(supabase: SupabaseClient, userId: string) {
   const { data: goals } = await supabase
     .from('goals').select('id, status, weightage').eq('employee_id', userId)
   const all = goals ?? []
@@ -78,13 +76,12 @@ async function fetchEmployeeStats(userId: string) {
   return {
     goalCount: all.length,
     weightageUsed: totalWeightage,
-    pendingCheckins: all.filter((g) => g.status === 'locked').length,
+    pendingCheckins: locked,
     completionPct,
   }
 }
 
-async function fetchManagerStats(userId: string) {
-  const supabase = await createClient()
+async function fetchManagerStats(supabase: SupabaseClient, userId: string) {
   const [teamRes, approvalsRes] = await Promise.all([
     supabase.from('users').select('id').eq('manager_id', userId).eq('is_active', true),
     supabase.from('goals').select('id').eq('status', 'submitted'),
@@ -106,8 +103,7 @@ async function fetchManagerStats(userId: string) {
   }
 }
 
-async function fetchAdminStats() {
-  const supabase = await createClient()
+async function fetchAdminStats(supabase: SupabaseClient) {
   const [goalsRes, usersRes] = await Promise.all([
     supabase.from('goals').select('id, status'),
     supabase.from('users').select('id').eq('is_active', true),
@@ -123,8 +119,7 @@ async function fetchAdminStats() {
   }
 }
 
-async function fetchRecentActivity(userId: string, role: UserRole): Promise<AuditEntry[]> {
-  const supabase = await createClient()
+async function fetchRecentActivity(supabase: SupabaseClient, userId: string, role: UserRole): Promise<AuditEntry[]> {
   let query = supabase
     .from('audit_log')
     .select('id, table_name, change_type, changed_at, changed_by')
@@ -284,10 +279,10 @@ function buildAdminCards(
   ]
 }
 
-async function resolveCards(user: AppUser): Promise<StatCard[]> {
-  if (user.role === 'employee') return buildEmployeeCards(await fetchEmployeeStats(user.id))
-  if (user.role === 'manager') return buildManagerCards(await fetchManagerStats(user.id))
-  return buildAdminCards(await fetchAdminStats())
+async function resolveCards(supabase: SupabaseClient, user: AppUser): Promise<StatCard[]> {
+  if (user.role === 'employee') return buildEmployeeCards(await fetchEmployeeStats(supabase, user.id))
+  if (user.role === 'manager') return buildManagerCards(await fetchManagerStats(supabase, user.id))
+  return buildAdminCards(await fetchAdminStats(supabase))
 }
 
 function getQuickActions(role: UserRole): QuickAction[] {
@@ -335,10 +330,20 @@ function getIconName(icon: React.ElementType): string {
 // ---------------------------------------------------------------------------
 
 export default async function DashboardPage() {
-  const user = await requireUser()
+  const supabase = await createClient()
+
+  // Fast cookie decode — middleware already verified the JWT
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) redirect('/login')
+
+  const { data: profileData } = await supabase
+    .from('users').select('*').eq('id', session.user.id).single()
+  const user = profileData as AppUser | null
+  if (!user) redirect('/login')
+
   const [cards, activity] = await Promise.all([
-    resolveCards(user),
-    fetchRecentActivity(user.id, user.role),
+    resolveCards(supabase, user),
+    fetchRecentActivity(supabase, user.id, user.role),
   ])
   const quickActions = getQuickActions(user.role)
   const greeting = getGreeting(user.full_name)

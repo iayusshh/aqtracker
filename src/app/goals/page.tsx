@@ -1,6 +1,7 @@
 export const revalidate = 30
 
-import { requireUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import type { AppUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import {
@@ -50,18 +51,28 @@ const STATUS_ACCENT: Record<GoalStatus, string> = {
 }
 
 export default async function GoalsPage() {
-  const user = await requireUser()
   const supabase = await createClient()
 
-  // Fetch the active goal_setting cycle
-  const { data: cycle } = await supabase
-    .from('goal_cycles')
-    .select('id, name, year, phase, status')
-    .eq('status', 'active')
-    .eq('phase', 'goal_setting')
-    .limit(1)
-    .maybeSingle()
+  // Fast cookie decode — middleware already verified the JWT on every request
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) redirect('/login')
 
+  // Parallel: user profile + active cycle (saves one sequential round-trip)
+  const [profileRes, cycleRes] = await Promise.all([
+    supabase.from('users').select('*').eq('id', session.user.id).single(),
+    supabase
+      .from('goal_cycles')
+      .select('id, name, year, phase, status')
+      .eq('status', 'active')
+      .eq('phase', 'goal_setting')
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  const user = profileRes.data as AppUser | null
+  if (!user) redirect('/login')
+
+  const cycle = cycleRes.data
   const cycleId: string | null = cycle?.id ?? null
 
   let goals: GoalRow[] = []
