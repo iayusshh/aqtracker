@@ -3,6 +3,7 @@ export const revalidate = 30
 import { redirect } from 'next/navigation'
 import type { AppUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+
 import Link from 'next/link'
 import {
   Target,
@@ -53,13 +54,13 @@ const STATUS_ACCENT: Record<GoalStatus, string> = {
 export default async function GoalsPage() {
   const supabase = await createClient()
 
-  // Fast cookie decode — middleware already verified the JWT on every request
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) redirect('/login')
+  // getUser() verifies the JWT — authoritative, not just cookie read
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (!authUser) redirect('/login')
 
   // Parallel: user profile + active cycle (saves one sequential round-trip)
   const [profileRes, cycleRes] = await Promise.all([
-    supabase.from('users').select('*').eq('id', session.user.id).single(),
+    supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase
       .from('goal_cycles')
       .select('id, name, year, phase, status')

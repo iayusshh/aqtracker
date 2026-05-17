@@ -24,6 +24,27 @@ export async function GET(req: NextRequest) {
   const quarter = searchParams.get('quarter')
   const status = searchParams.get('status')
 
+  // Pre-fetch goal IDs when department or cycle filters are active
+  let goalIdFilter: string[] | null = null
+  if (department || cycle_id) {
+    let goalsQ = supabase.from('goals').select('id')
+    if (cycle_id) goalsQ = goalsQ.eq('cycle_id', cycle_id)
+    if (department) {
+      const { data: empRows } = await supabase
+        .from('users').select('id').eq('department', department)
+      const empIds = (empRows ?? []).map((u: { id: string }) => u.id)
+      if (empIds.length === 0) {
+        return new NextResponse('', { status: 204 })
+      }
+      goalsQ = goalsQ.in('employee_id', empIds)
+    }
+    const { data: goalRows } = await goalsQ
+    goalIdFilter = (goalRows ?? []).map((g: { id: string }) => g.id)
+    if (goalIdFilter.length === 0) {
+      return new NextResponse('', { status: 204 })
+    }
+  }
+
   let query = supabase
     .from('quarterly_achievements')
     .select(`
@@ -55,8 +76,7 @@ export async function GET(req: NextRequest) {
 
   if (quarter) query = query.eq('quarter', quarter)
   if (status) query = query.eq('status', status)
-  if (cycle_id) query = query.eq('goals.cycle_id', cycle_id)
-  if (department) query = query.eq('goals.users.department', department)
+  if (goalIdFilter) query = query.in('goal_id', goalIdFilter)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

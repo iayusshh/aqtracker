@@ -20,6 +20,25 @@ async function fetchAchievements(filters: SearchParams) {
   const page = Math.max(1, parseInt(filters.page ?? '1', 10))
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
+  const empty = { data: [], total: 0, page, totalPages: 0 }
+
+  // PostgREST doesn't support two-level nested filters (goals.users.department).
+  // Pre-fetch matching goal IDs when department or cycle filters are active.
+  let goalIdFilter: string[] | null = null
+  if (filters.department || filters.cycle_id) {
+    let goalsQ = supabase.from('goals').select('id')
+    if (filters.cycle_id) goalsQ = goalsQ.eq('cycle_id', filters.cycle_id)
+    if (filters.department) {
+      const { data: empRows } = await supabase
+        .from('users').select('id').eq('department', filters.department)
+      const empIds = (empRows ?? []).map((u: { id: string }) => u.id)
+      if (empIds.length === 0) return empty
+      goalsQ = goalsQ.in('employee_id', empIds)
+    }
+    const { data: goalRows } = await goalsQ
+    goalIdFilter = (goalRows ?? []).map((g: { id: string }) => g.id)
+    if (goalIdFilter.length === 0) return empty
+  }
 
   let query = supabase
     .from('quarterly_achievements')
@@ -53,8 +72,7 @@ async function fetchAchievements(filters: SearchParams) {
 
   if (filters.quarter) query = query.eq('quarter', filters.quarter)
   if (filters.status) query = query.eq('status', filters.status)
-  if (filters.cycle_id) query = (query as any).eq('goals.cycle_id', filters.cycle_id)
-  if (filters.department) query = (query as any).eq('goals.users.department', filters.department)
+  if (goalIdFilter) query = query.in('goal_id', goalIdFilter)
 
   const { data, error, count } = await query
   if (error) throw new Error(error.message)

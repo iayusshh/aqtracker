@@ -21,16 +21,19 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() reads the JWT from the cookie without a network round-trip.
+  // This is intentional in middleware — the role is fast routing only.
+  // Server components call getUser() which does the actual JWT verification.
+  const { data: { session } } = await supabase.auth.getSession()
 
   const isPublicPath = request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/auth')
 
-  if (!user && !isPublicPath) {
+  if (!session && !isPublicPath) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && request.nextUrl.pathname === '/') {
+  if (session && request.nextUrl.pathname === '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

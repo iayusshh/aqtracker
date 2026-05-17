@@ -332,12 +332,12 @@ function getIconName(icon: React.ElementType): string {
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Fast cookie decode — middleware already verified the JWT
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) redirect('/login')
+  // getUser() verifies the JWT with Supabase auth server (authoritative check)
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (!authUser) redirect('/login')
 
   const { data: profileData } = await supabase
-    .from('users').select('*').eq('id', session.user.id).single()
+    .from('users').select('*').eq('id', authUser.id).single()
   const user = profileData as AppUser | null
   if (!user) redirect('/login')
 

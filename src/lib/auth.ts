@@ -14,15 +14,13 @@ export interface AppUser {
 
 export async function getUser(): Promise<AppUser | null> {
   const supabase = await createClient()
-  // proxy.ts middleware already verified the JWT via getUser() on every request,
-  // so reading the session from the cookie here avoids a second auth round-trip.
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) return null
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
   const { data } = await supabase
     .from('users')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   return data as AppUser | null
