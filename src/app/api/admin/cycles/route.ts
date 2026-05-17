@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('goal_cycles')
-    .insert({ name, phase, window_open, window_close, status: status ?? 'draft' })
+    .insert({ name, phase, window_open, window_close, status: status ?? 'draft', created_by: user.id })
     .select()
     .single()
 
