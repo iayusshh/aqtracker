@@ -47,3 +47,8 @@ SUBMISSION.md
 
 # Ruflo agent artifact
 ruvector.db
+
+# AI agent instruction files
+AGENTS.md
+CLAUDE.md
+.claude-flow/
